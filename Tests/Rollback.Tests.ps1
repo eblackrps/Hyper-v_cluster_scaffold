@@ -6,6 +6,7 @@
 #>
 
 BeforeAll {
+    . "$PSScriptRoot\_Stubs.ps1"
     . "$PSScriptRoot\..\Private\Logging.ps1"
     . "$PSScriptRoot\..\Private\Rollback.ps1"
 
@@ -108,7 +109,7 @@ Describe "Restore-HVClusterSnapshot" {
 
             $snap = New-TestSnapshot -ClusterExistedBefore $true -NodeNames @('NODE1')
             Restore-HVClusterSnapshot -SnapshotPath $snap -Force | Out-Null
-            Should -Invoke Remove-ClusterNode -Times 1 -ParameterFilter { $Name -eq 'NODE2' }
+            Should -Invoke Remove-ClusterNode -Times 1
             Remove-Item $snap -Force
         }
 

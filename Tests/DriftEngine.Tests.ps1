@@ -160,40 +160,40 @@ Describe "Get-HVOSProfile" {
         Mock Get-CimInstance {
             [PSCustomObject]@{ BuildNumber = '26100'; Caption = 'Windows Server 2025 Datacenter' }
         }
-        $profile = Get-HVOSProfile -ComputerName 'localhost'
-        $profile.PSObject.Properties.Name | Should -Contain 'Version'
-        $profile.PSObject.Properties.Name | Should -Contain 'Build'
-        $profile.PSObject.Properties.Name | Should -Contain 'DisplayName'
+        $osResult = Get-HVOSProfile -ComputerName 'localhost'
+        $osResult.PSObject.Properties.Name | Should -Contain 'Version'
+        $osResult.PSObject.Properties.Name | Should -Contain 'Build'
+        $osResult.PSObject.Properties.Name | Should -Contain 'DisplayName'
     }
 
     It "Identifies WS2025 from build 26100" {
         Mock Get-CimInstance {
             [PSCustomObject]@{ BuildNumber = '26100'; Caption = 'Windows Server 2025' }
         }
-        $profile = Get-HVOSProfile -ComputerName 'localhost'
-        $profile.Version | Should -Be '2025'
+        $osResult = Get-HVOSProfile -ComputerName 'localhost'
+        $osResult.Version | Should -Be '2025'
     }
 
     It "Identifies WS2022 from build 20348" {
         Mock Get-CimInstance {
             [PSCustomObject]@{ BuildNumber = '20348'; Caption = 'Windows Server 2022' }
         }
-        $profile = Get-HVOSProfile -ComputerName 'localhost'
-        $profile.Version | Should -Be '2022'
+        $osResult = Get-HVOSProfile -ComputerName 'localhost'
+        $osResult.Version | Should -Be '2022'
     }
 
     It "Returns Unknown for unrecognized builds" {
         Mock Get-CimInstance {
             [PSCustomObject]@{ BuildNumber = '10000'; Caption = 'Some Old OS' }
         }
-        $profile = Get-HVOSProfile -ComputerName 'localhost'
-        $profile.Version | Should -Be 'Unknown'
+        $osResult = Get-HVOSProfile -ComputerName 'localhost'
+        $osResult.Version | Should -Be 'Unknown'
     }
 
     It "Handles CimInstance failure gracefully" {
         Mock Get-CimInstance { throw "WinRM unavailable" }
         { Get-HVOSProfile -ComputerName 'unreachable' } | Should -Not -Throw
-        $profile = Get-HVOSProfile -ComputerName 'unreachable'
-        $profile.Version | Should -Be 'Unknown'
+        $osResult = Get-HVOSProfile -ComputerName 'unreachable'
+        $osResult.Version | Should -Be 'Unknown'
     }
 }

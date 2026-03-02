@@ -1,4 +1,3 @@
-\
 # HyperVClusterPlatform.psm1
 # Loader that dot-sources Private + Public functions
 

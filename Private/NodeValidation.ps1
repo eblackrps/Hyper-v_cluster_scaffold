@@ -52,9 +52,9 @@ function Test-HVNodeReadiness {
                     $os    = Get-CimInstance Win32_OperatingSystem
                     $build = [int]$os.BuildNumber
                     switch ($true) {
-                        ($build -ge 26100) { [PSCustomObject]@{ Build=$build; Version='2025'; DisplayName='Windows Server 2025' } }
-                        ($build -ge 20348) { [PSCustomObject]@{ Build=$build; Version='2022'; DisplayName='Windows Server 2022' } }
-                        ($build -ge 17763) { [PSCustomObject]@{ Build=$build; Version='2019'; DisplayName='Windows Server 2019' } }
+                        ($build -ge 26100) { [PSCustomObject]@{ Build=$build; Version='2025'; DisplayName='Windows Server 2025' }; break }
+                        ($build -ge 20348) { [PSCustomObject]@{ Build=$build; Version='2022'; DisplayName='Windows Server 2022' }; break }
+                        ($build -ge 17763) { [PSCustomObject]@{ Build=$build; Version='2019'; DisplayName='Windows Server 2019' }; break }
                         default             { [PSCustomObject]@{ Build=$build; Version='Unknown'; DisplayName=$os.Caption } }
                     }
                 } -ErrorAction Stop
@@ -109,7 +109,7 @@ function Test-HVNodeReadiness {
                 $warnings.Add("[$node] Could not check features remotely: $($_.Exception.Message)")
             }
 
-            Remove-PSSession -Session $session -ErrorAction SilentlyContinue
+            try { Remove-PSSession -Session $session -ErrorAction SilentlyContinue } catch { }
         }
         catch {
             $failures.Add("[$node] WinRM connection failed: $($_.Exception.Message). Ensure WinRM is enabled and firewall allows it.")

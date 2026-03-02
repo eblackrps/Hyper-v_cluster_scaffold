@@ -15,6 +15,10 @@ Describe "Module loads cleanly" {
         (Get-Command -Module HyperVClusterPlatform -Name 'Invoke-HVClusterPlatform') | Should -Not -BeNullOrEmpty
     }
 
+    It "Exports Invoke-HVClusterFleet" {
+        (Get-Command -Module HyperVClusterPlatform -Name 'Invoke-HVClusterFleet') | Should -Not -BeNullOrEmpty
+    }
+
     It "Does NOT export private functions" {
         $exported = (Get-Command -Module HyperVClusterPlatform).Name
         $exported | Should -Not -Contain 'Write-HVLog'
@@ -22,8 +26,8 @@ Describe "Module loads cleanly" {
         $exported | Should -Not -Contain 'New-HVClusterSnapshot'
     }
 
-    It "Module version is 8.0.0" {
-        (Get-Module HyperVClusterPlatform).Version.ToString() | Should -Be '8.0.0'
+    It "Module version is 20.0.0" {
+        (Get-Module HyperVClusterPlatform).Version.ToString() | Should -Be '20.0.0'
     }
 }
 

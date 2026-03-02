@@ -1,8 +1,12 @@
-\
-[ClassVersion("1.0.0"), FriendlyName("HVClusterResource")]
+[ClassVersion("2.0.0"), FriendlyName("HVClusterResource")]
 class HVClusterResource : OMI_BaseResource
 {
-  [Key] string ClusterName;
-  [Required] string Nodes[];
-  [Write, ValueMap{"Present","Absent"}, Values{"Present","Absent"}] string Ensure;
+  [Key,      Description("Cluster name (must match Active Directory CNO)")]      string ClusterName;
+  [Required, Description("Static IP address for the cluster name object")]       string StaticAddress;
+  [Required, Description("Array of cluster node hostnames")]                     string Nodes[];
+  [Write, ValueMap{"None","Disk","Cloud","Share"}, Values{"None","Disk","Cloud","Share"},
+           Description("Quorum witness type. Default: None")]                    string WitnessType;
+  [Write, ValueMap{"Present","Absent"}, Values{"Present","Absent"},
+           Description("Whether the cluster should exist. Default: Present")]    string Ensure;
+  [Write,    Description("UNC path to file share witness (WitnessType=Share)")]  string FileShareWitness;
 };

@@ -1,20 +1,31 @@
 # HyperVClusterPlatform
 
-> **v8.0.0** — Production-hardened Hyper-V cluster automation for **Windows Server 2022** and **Windows Server 2025**
+> **v20.0.0** — Production-hardened Hyper-V cluster automation for **Windows Server 2022** and **Windows Server 2025**
 
-A PowerShell module for fully automated Hyper-V failover cluster deployment and compliance management:
+A PowerShell module for fully automated Hyper-V failover cluster deployment, compliance management, health monitoring, and fleet orchestration:
 
 - **Audit / Enforce / Remediate** modes
 - **Pre-flight checks** — admin rights, OS version, Windows Features, domain membership, DNS
 - **Node validation** — per-node WinRM, feature, and domain checks before any changes
-- **OS detection** — WS2022 (build 20348) and WS2025 (build 26100) aware
+- **OS detection** — WS2019, WS2022 (build 20348), and WS2025 (build 26100) aware
 - **Drift scoring** — 0–100 compliance score with detailed mismatch reporting
+- **Network automation** — adapter classification, Live Migration network assignment
+- **VM placement** — preferred owner policies and anti-affinity group enforcement
+- **Storage automation** — Cluster Shared Volume enumeration and drift detection
 - **Full witness support** — Disk, Cloud (Azure Blob), File Share, or None
+- **Health monitoring** — node/resource/quorum/CSV health with 0–100 score
+- **Multi-channel alerting** — email, Microsoft Teams webhook, Slack webhook, Windows Event Log
+- **Secret management** — Microsoft.PowerShell.SecretManagement and Windows Credential Manager
+- **Fleet orchestration** — multi-cluster parallel runs with aggregated HTML report
+- **Live migration** — pre-flight readiness checks and orchestrated `Move-ClusterVirtualMachineRole`
+- **Disaster recovery** — DR readiness snapshots and readiness scoring
+- **Certification suite** — 10-domain compliance gate for production sign-off
 - **Real rollback engine** — snapshot-based; removes what was created if enforcement fails
+- **JSON telemetry** — structured metrics alongside every HTML report
 - **File-based rotating logs** — timestamped, color-coded, persisted to disk
-- **JSON config files** — environment profiles (Dev / Staging / Prod)
-- **Full Pester test suite** — mocked unit tests, no live cluster required
-- **CI/CD pipelines** — PSScriptAnalyzer lint + Pester + manifest validation
+- **JSON config files** — environment profiles (Dev / Staging / Prod) with secret-name resolution
+- **Full Pester test suite** — 121 mocked unit tests across 15 test files, no live cluster required
+- **CI/CD pipelines** — PSScriptAnalyzer lint + Pester + manifest validation + PSGallery publish
 
 ---
 
@@ -34,14 +45,15 @@ A PowerShell module for fully automated Hyper-V failover cluster deployment and 
 
 ```
 HyperVClusterPlatform/
-  HyperVClusterPlatform.psd1          # module manifest (v8.0.0)
+  HyperVClusterPlatform.psd1          # module manifest (v20.0.0)
   HyperVClusterPlatform.psm1          # loader: dot-sources Public + Private
   README.md
   CHANGELOG.md
   ROADMAP.md
   .gitignore
   Public/
-    Invoke-HVClusterPlatform.ps1      # ONLY public entry point
+    Invoke-HVClusterPlatform.ps1      # single-cluster entry point
+    Invoke-HVClusterFleet.ps1         # multi-cluster fleet runner
   Private/
     Logging.ps1                       # file logging + rotation
     DesiredState.ps1                  # desired state builder + live state reader
@@ -53,20 +65,44 @@ HyperVClusterPlatform/
     Enforcement.ps1                   # cluster creation, node join, witness config
     Rollback.ps1                      # snapshot-diff rollback engine
     Configuration.ps1                 # JSON config file loader
+    NetworkConfig.ps1                 # adapter classification + network drift
+    VMPlacement.ps1                   # VM preferred-owner + anti-affinity
+    StorageConfig.ps1                 # CSV state + storage drift
+    HealthCheck.ps1                   # cluster health (node/resource/quorum/CSV)
+    Alerting.ps1                      # email / Teams / Slack / Event Log alerts
+    SecretManagement.ps1              # SecretManagement vault + CredentialManager
+    LiveMigration.ps1                 # live migration readiness + execution
+    DisasterRecovery.ps1              # DR snapshot + readiness scoring
+    CertificationSuite.ps1            # 10-domain production certification gate
+    TelemetryExport.ps1               # JSON telemetry output
   Config/
     cluster-config.example.json       # config template (copy and fill in)
   DSC/
-    HVClusterResource/                # DSC resource skeleton
+    HVClusterResource/                # DSC resource (Get-/Test-/Set-TargetResource)
       HVClusterResource.psm1
       HVClusterResource.schema.mof
+  Scripts/
+    Update-ModuleVersion.ps1          # bumps .psd1 version from git tags
+    New-Release.ps1                   # creates GitHub release via gh CLI
   Tests/
+    _Stubs.ps1                        # cmdlet stubs for optional Windows modules
     Cluster.Tests.ps1                 # module load + public API tests
     DriftEngine.Tests.ps1             # drift score + OS detection unit tests
     Preflight.Tests.ps1               # pre-flight + node validation unit tests
     Rollback.Tests.ps1                # rollback engine unit tests
     Configuration.Tests.ps1          # config file loader unit tests
+    NetworkConfig.Tests.ps1           # adapter classification + drift tests
+    VMPlacement.Tests.ps1             # VM placement + drift tests
+    StorageConfig.Tests.ps1           # CSV state + storage drift tests
+    HealthCheck.Tests.ps1             # cluster health scoring tests
+    Alerting.Tests.ps1                # multi-channel alert dispatch tests
+    SecretManagement.Tests.ps1        # vault + credential manager tests
+    Fleet.Tests.ps1                   # multi-cluster fleet tests
+    LiveMigration.Tests.ps1           # live migration readiness tests
+    DisasterRecovery.Tests.ps1        # DR snapshot + readiness tests
+    CertificationSuite.Tests.ps1      # certification gate tests
   Pipelines/
-    github-actions.yml                # lint + test + smoke (3 jobs)
+    github-actions.yml                # lint + test + smoke + PSGallery publish
     azure-pipeline.yml                # lint + test + manifest (3 stages)
   Reports/                            # runtime output — gitignored
   Logs/                               # rotating log files — gitignored
@@ -132,9 +168,38 @@ See [`Config/cluster-config.example.json`](Config/cluster-config.example.json) f
 
 ---
 
-## Output object
+## Fleet orchestration
 
-`Invoke-HVClusterPlatform` returns a `PSCustomObject` with:
+```powershell
+# Run against every cluster defined in a fleet config file
+Invoke-HVClusterFleet -FleetFile .\Config\fleet.json -Mode Audit
+
+# Or pass an explicit list of per-cluster config files
+Invoke-HVClusterFleet -ConfigList @('.\Config\site-a.json','.\Config\site-b.json') -Mode Enforce
+```
+
+`Invoke-HVClusterFleet` returns a fleet-level PSCustomObject and writes an HTML roll-up report to `Reports/`.
+
+---
+
+## Health monitoring
+
+```powershell
+# On-demand health check
+Get-HVClusterHealth -IncludeVMs
+
+# Policy-based alerting: fire alert if health score < 80
+Invoke-HVHealthAlertPolicy -AlertThreshold 80 -AlertParams @{
+    SmtpServer      = 'smtp.corp.local'
+    EmailFrom       = 'cluster@corp.local'
+    EmailTo         = @('ops@corp.local')
+    TeamsWebhookUrl = 'https://outlook.office.com/webhook/...'
+}
+```
+
+---
+
+## Output object (`Invoke-HVClusterPlatform`)
 
 | Property | Type | Description |
 |---|---|---|
@@ -159,7 +224,7 @@ Install-Module Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
 Invoke-Pester .\Tests -Output Detailed
 ```
 
-All tests use mocked cmdlets — no live Hyper-V cluster needed.
+All 121 tests use mocked cmdlets — no live Hyper-V cluster needed.
 
 ---
 
@@ -189,5 +254,6 @@ Get-Command -Module HyperVClusterPlatform
 
 - **Rollback** uses `ClusterExistedBefore` from the snapshot to decide whether to destroy the cluster entirely or only remove nodes added during enforcement. It cannot guarantee a perfect rollback in all partial-failure scenarios — always review the log.
 - **Cloud witness** requires an Azure Blob Storage account with LRS redundancy. Provide the storage account name and one of the two access keys.
-- **DSC resource** (`DSC/HVClusterResource`) is a skeleton. `Get-/Test-/Set-TargetResource` are implemented as stubs for you to extend.
-- **Secrets** — never commit `Config/prod.json` or similar files containing real credentials. The `.gitignore` excludes them by pattern.
+- **Secrets** — never commit `Config/prod.json` or similar files containing real credentials. The `.gitignore` excludes them by pattern. Use `CloudWitnessStorageKeySecretName` and a registered SecretManagement vault instead.
+- **DSC resource** (`DSC/HVClusterResource`) provides a functional `Get-/Test-/Set-TargetResource` implementation wired to the cluster automation engine.
+- **Certification** — `Invoke-HVCertificationSuite` runs 10 compliance domains and requires all to pass before returning `Certified = $true`. Intended as a production go-live gate.

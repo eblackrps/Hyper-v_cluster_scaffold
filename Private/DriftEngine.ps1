@@ -14,15 +14,15 @@ function Get-HVOSProfile {
         $os    = Get-CimInstance -ClassName Win32_OperatingSystem -ComputerName $ComputerName -ErrorAction Stop
         $build = [int]$os.BuildNumber
 
-        $profile = switch ($true) {
-            ($build -ge 26100) { [PSCustomObject]@{ Build = $build; Version = '2025'; DisplayName = 'Windows Server 2025' } }
-            ($build -ge 20348) { [PSCustomObject]@{ Build = $build; Version = '2022'; DisplayName = 'Windows Server 2022' } }
-            ($build -ge 17763) { [PSCustomObject]@{ Build = $build; Version = '2019'; DisplayName = 'Windows Server 2019' } }
+        $osProfile = switch ($true) {
+            ($build -ge 26100) { [PSCustomObject]@{ Build = $build; Version = '2025'; DisplayName = 'Windows Server 2025' }; break }
+            ($build -ge 20348) { [PSCustomObject]@{ Build = $build; Version = '2022'; DisplayName = 'Windows Server 2022' }; break }
+            ($build -ge 17763) { [PSCustomObject]@{ Build = $build; Version = '2019'; DisplayName = 'Windows Server 2019' }; break }
             default             { [PSCustomObject]@{ Build = $build; Version = 'Unknown'; DisplayName = $os.Caption } }
         }
 
-        Write-HVLog -Message "OS Profile [$ComputerName]: $($profile.DisplayName) (Build $build)" -Level 'INFO'
-        return $profile
+        Write-HVLog -Message "OS Profile [$ComputerName]: $($osProfile.DisplayName) (Build $build)" -Level 'INFO'
+        return $osProfile
     }
     catch {
         Write-HVLog -Message "OS detection failed for '$ComputerName': $($_.Exception.Message)" -Level 'WARN'
@@ -41,7 +41,7 @@ function Get-HVDriftScore {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]$Desired,
-        [Parameter(Mandatory)]$Current
+        [Parameter(Mandatory)][AllowNull()]$Current
     )
 
     if (-not $Current) {
